@@ -1,0 +1,73 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.dll
+*.whl
+
+# Virtual environment
+venv/
+.env/
+*.env
+
+# --- Logs & caches ---
+*.log
+*.sqlite
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Streamlit Cache
+.streamlit/
+**/.streamlit/
+.streamlit/cache/
+**/.streamlit/cache/
+
+# Mood JSON logs (optional, but safer to ignore)
+mood_data.json
+
+# --- IDE / Editor files ---
+.vscode/
+.idea/
+*.iml
+
+# --- macOS junk files ---
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# --- Python packaging ---
+build/
+dist/
+*.egg-info/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# --- OS Files ---
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# --- Images generated or screenshots (optional) ---
+*.png
+*.jpg
+*.jpeg
+
+# --- Ignore local config ---
+config.json
+secrets.json

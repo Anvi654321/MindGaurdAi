@@ -11,51 +11,60 @@ client = Groq(api_key=GROQ_KEY) if GROQ_KEY else None
 
 def fallback_reply(user_msg: str, emotion: str) -> str:
     """
-    Rule-based backup.
-    Includes logical follow-up questions.
+    Rule-based backup for when the API fails or returns nothing.
     """
 
     msg = user_msg.lower()
 
     if "sad" in msg:
         return (
-            "I'm really sorry you're feeling sad. "
-            "Sometimes sharing your feelings can make things feel lighter. "
-            "Would you like to tell me what made you feel this way?"
+            "I am sorry that you are feeling sad. "
+            "It is okay to feel this way sometimes. "
+            "Doing something small that you enjoy or talking to someone you trust "
+            "can help you feel a little lighter."
         )
 
     if "angry" in msg:
         return (
-            "Feeling angry can be tough. "
-            "Taking a few deep breaths or taking a short break can sometimes help. "
-            "Do you want to tell me what made you feel angry?"
+            "Feeling angry can be very intense. "
+            "Taking a few deep breaths, counting slowly, or stepping away for a short break may help. "
+            "You deserve some calm time for yourself."
         )
 
     if "friend" in msg:
         return (
-            "Friendship issues can really hurt. "
-            "It's okay to feel upset about it. "
-            "What happened with your friends?"
+            "Friendship problems can really hurt. "
+            "It is normal to feel upset when things are not going well with friends. "
+            "You might feel better by calmly sharing your feelings with them "
+            "or talking to a trusted adult."
         )
 
-    if "exam" in msg:
+    if "exam" in msg or "test" in msg:
         return (
-            "Exams can definitely feel stressful. "
-            "Breaking your study into small parts may help you feel more in control. "
-            "Which subject is worrying you the most?"
+            "Exams can feel stressful for many students. "
+            "Breaking your study time into small parts and taking short breaks "
+            "can make it feel more manageable."
         )
 
-    if "happy" in msg or "hapy" in msg:
+    if "happy" in msg or "hapy" in msg or emotion == "positive":
         return (
-            "That's wonderful! It's great to hear you're feeling happy. "
-            "What made your day better?"
+            "That is wonderful to hear. "
+            "Enjoy this happy moment and keep doing the things that make you feel good and relaxed."
         )
 
     # General fallback
-    return (
-        f"You said: “{user_msg}”. "
-        "Thank you for sharing. How are you feeling about this?"
-    )
+    if emotion in ("negative", "very_negative"):
+        return (
+            f"You said: “{user_msg}”. "
+            "I am sorry that this is bothering you. "
+            "Writing your thoughts in a journal or talking to a trusted adult "
+            "may help you feel more supported."
+        )
+    else:
+        return (
+            f"You said: “{user_msg}”. "
+            "Thank you for sharing how you feel."
+        )
 
 
 def _format_history(history: List[Tuple[str, str]]) -> str:
@@ -65,35 +74,51 @@ def _format_history(history: List[Tuple[str, str]]) -> str:
 
 
 def generate_ai_reply(user_msg: str, emotion: str, history: List[Tuple[str, str]]) -> str:
+    """
+    Conversational reply using Groq (LLaMA 3) with safety rules.
+    More expressive and less repetitive, but still safe.
+    """
+
     if client is None:
         return fallback_reply(user_msg, emotion)
 
     system_prompt = """
 You are MindGuard AI, a friendly emotional support companion for teenagers.
 
-Rules:
-- No medical or psychological advice.
-- No diagnosis.
-- No therapy recommendations.
-- Use simple, warm, short responses.
-- Always add ONE kind follow-up question.
-- Encourage only safe actions: deep breaths, water, break, journaling, or talk to trusted adult.
+Safety rules:
+- Do NOT give medical, psychological, or mental health advice.
+- Do NOT diagnose any condition.
+- Do NOT recommend medicines, therapy, or treatment.
+- Do NOT mention hotlines or specific organisations.
+- Use simple, warm, age-appropriate language.
+- Be supportive, non-judgmental, and respectful.
+- Encourage only safe actions: deep breaths, a short break, drinking water,
+  gentle movement, journaling, listening to calming music, or talking to a trusted adult.
 - Never promise secrecy.
-- Never say you are an AI.
+- Do NOT say that you are an AI or language model.
+
+Style rules:
+- Write like a kind, understanding senior who is gently supporting a younger student.
+- Use 3–6 short sentences, up to about 120–150 words.
+- You may use small friendly emojis like 🙂, 🌱, 💙, but use them sparingly.
+- Vary your wording from message to message. Do not repeat the same sentences every time.
+- You may ask ONE gentle follow-up question ONLY when the student seems upset,
+  confused, or needs to open up more (usually when emotion is negative or very_negative).
+- For positive or neutral emotions, a follow-up question is usually not needed.
 """
 
     user_prompt = f"""
-Emotion detected: {emotion}
-Student said: "{user_msg}"
+Detected emotion: {emotion}
+Student message: "{user_msg}"
 
-Conversation history:
+Recent conversation:
 {_format_history(history)}
 
-Respond with:
-1. A warm, personalized message.
-2. One supportive, safe suggestion.
-3. ONE gentle follow-up question (mandatory).
-Max 80 words.
+Please respond with:
+- A short, kind, and personalized message that clearly reacts to what the student said.
+- One or two simple, healthy suggestions if helpful.
+- At most ONE gentle follow-up question, and only if the student seems upset or might want to share more.
+Try to keep the whole reply within 3–6 sentences.
 """
 
     try:
@@ -101,15 +126,20 @@ Max 80 words.
             model="llama3-8b-8192",
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
+                {"role": "user",  "content": user_prompt},
             ],
-            max_tokens=150,
-            temperature=0.4,
+            max_tokens=220,
+            temperature=0.7,
         )
-        reply = response.choices[0].message["content"].strip()
+
+        # Groq client: content is here
+        reply = response.choices[0].message.content.strip()
+
         if not reply:
             return fallback_reply(user_msg, emotion)
+
         return reply
 
-    except:
+    except Exception:
+        # Any error → safe fallback
         return fallback_reply(user_msg, emotion)

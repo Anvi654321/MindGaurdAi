@@ -1,7 +1,12 @@
 {
   "2025-12-06": {
     "positive": 0,
-    "neutral": 5,
-    "negative": 14
+    "neutral": 8,
+    "negative": 16
+  },
+  "2025-12-07": {
+    "positive": 14,
+    "neutral": 36,
+    "negative": 18
   }
 }

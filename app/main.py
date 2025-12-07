@@ -6,28 +6,189 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
+import os
 import streamlit as st
+import pandas as pd
 
 from app.services.sentiment import detect_emotion
 from app.services.safety import is_distress
 from app.services.mood_store import log_mood, load_mood_data
 from app.services.chat import generate_ai_reply
 
-# Basic page config
-st.set_page_config(
-    page_title="MindGaurdAi",
-    page_icon="💙",
-    layout="wide"
+# ----------------- SCHOOL SETTINGS -----------------
+SCHOOL_NAME = "The Newtown School, Kolkata"
+LOGO_PATH = "assets/logo.png"   # make sure this file exists
+
+# ----------------- PAGE CONFIG -----------------
+if os.path.exists(LOGO_PATH):
+    st.set_page_config(
+        page_title="MindGuard AI",
+        page_icon=LOGO_PATH,
+        layout="wide"
+    )
+else:
+    st.set_page_config(
+        page_title="MindGuard AI",
+        page_icon="💙",
+        layout="wide"
+    )
+
+# ----------------- GLOBAL STYLES -----------------
+st.markdown(
+    """
+    <style>
+    body {
+        background-color: #F5F7FB;
+    }
+    /* Main container spacing */
+    .block-container {
+        padding-top: 1.4rem;
+        padding-bottom: 1rem;
+    }
+    .chat-bubble-user {
+        background-color: #DCF8C6;
+        padding: 10px;
+        border-radius: 10px;
+        margin-bottom: 8px;
+        border: 1px solid #C5E1A5;
+    }
+    .chat-bubble-ai {
+        background-color: #E8F1FF;
+        padding: 10px;
+        border-radius: 10px;
+        margin-bottom: 8px;
+        border: 1px solid #BBDEFB;
+    }
+    /* Make buttons (including Quick feelings) a bit more compact */
+    .stButton>button {
+        padding: 0.2rem 0.6rem;
+        font-size: 0.8rem;
+    }
+    /* Hide Streamlit's top header + deploy toolbar */
+    header[data-testid="stHeader"] {
+        display: none !important;
+    }
+    div[data-testid="stToolbar"] {
+        display: none !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
 )
 
 
+# ----------------- HELPERS -----------------
+def build_mood_df(mood_data: dict):
+    """Convert mood JSON into a DataFrame for charts."""
+    if not mood_data:
+        return None
+    rows = []
+    for date_str, counts in mood_data.items():
+        rows.append({
+            "date": date_str,
+            "positive": counts.get("positive", 0),
+            "neutral": counts.get("neutral", 0),
+            "negative": counts.get("negative", 0),
+        })
+    if not rows:
+        return None
+    df = pd.DataFrame(rows)
+    df = df.sort_values("date")
+    df = df.set_index("date")
+    return df
+
+
+def handle_message(message: str):
+    """Process one user message: emotion → safety → reply → history + mood log."""
+    emotion = detect_emotion(message)
+
+    # Map emotion to mood bucket for logging
+    if emotion in ("positive", "neutral", "negative"):
+        mood_bucket = emotion
+    else:  # 'very_negative' also logged as 'negative'
+        mood_bucket = "negative"
+
+    log_mood(mood_bucket)
+
+    # Distress check (crisis safety)
+    if is_distress(message, emotion):
+        ai_reply = (
+            "I am really sorry that you are feeling this much pain. "
+            "Please talk to a parent, teacher, or counsellor right now. "
+            "You do not have to face this alone — someone you trust can "
+            "support you immediately."
+        )
+    else:
+        ai_reply = generate_ai_reply(message, emotion, st.session_state.history)
+
+    # Store conversation (always: You then AI)
+    st.session_state.history.append(("You", message))
+    st.session_state.history.append(("MindGuard AI", ai_reply))
+
+
+def on_text_enter():
+    """Called when text input changes (Enter pressed)."""
+    text = st.session_state.get("input", "").strip()
+    if not text:
+        return
+
+    # Only send on Enter if the checkbox is enabled
+    if not st.session_state.get("enter_to_send", True):
+        return
+
+    # Directly handle message every time Enter is pressed
+    handle_message(text)
+    st.session_state.last_sent = text
+    st.session_state.clear_input = True
+    st.rerun()
+
+
+# ----------------- MAIN APP -----------------
 def main():
+    # -------- INITIAL SESSION STATE --------
+    if "history" not in st.session_state:
+        st.session_state.history = []  # list of (role, message)
+
+    if "input" not in st.session_state:
+        st.session_state.input = ""
+
+    if "clear_input" not in st.session_state:
+        st.session_state.clear_input = False
+
+    if "last_sent" not in st.session_state:
+        st.session_state.last_sent = ""
+
+    if "enter_to_send" not in st.session_state:
+        st.session_state.enter_to_send = True
+
+    # Clear input BEFORE creating widget
+    if st.session_state.clear_input:
+        st.session_state.input = ""
+        st.session_state.clear_input = False
+
     # -------- SIDEBAR --------
     with st.sidebar:
-        st.markdown("## MindGuard AI")
-        st.markdown("**Student:** Anvita Shashi (Class IX-B)")
-        st.markdown("---")
-        st.markdown("### Technologies Used")
+        # Logo at top
+        if os.path.exists(LOGO_PATH):
+            st.image(LOGO_PATH, width=170)
+
+        st.markdown("## 💙 MindGuard AI")
+
+        # Compact student/school/class block
+        st.markdown(
+            f"""
+            <div style='line-height: 1.2; font-size: 14px; margin-top: 0.1rem;'>
+                <b>Student:</b> Anvita Shashi<br>
+                <b>School:</b> {SCHOOL_NAME}<br>
+                <b>Class:</b> IX (B)
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        #st.markdown("---")
+
+        st.markdown("### 🛠️ Technologies Used")
         st.markdown(
             "- Python 3.14\n"
             "- Streamlit\n"
@@ -35,20 +196,28 @@ def main():
             "- Groq + LLaMA 3 (LLM)\n"
             "- JSON for Mood Logs"
         )
-        st.markdown("---")
+        #st.markdown("---")
         st.info(
             "Disclaimer: This tool does not provide medical advice or diagnosis. "
             "For serious concerns, students must talk to a parent, teacher, or counsellor."
+        )
+        #st.markdown("---")
+        st.markdown("### ℹ️ About MindGuard AI")
+        st.markdown(
+            "MindGuard AI is a school project that uses sentiment analysis and a safe "
+            "AI model to support teenagers with their everyday emotions. "
+            "It gently encourages students to talk to trusted adults when needed."
         )
 
     # -------- HEADER --------
     st.markdown(
         """
-        <h1 style='text-align: center; color: #4A90E2;'>MindGuard AI</h1>
-        <p style='text-align: center; font-size: 18px;'>
-            💙 A Safe & Supportive Emotional Wellness Companion for Teenagers
-        </p>
-        <hr>
+        <div style='text-align: center; margin-bottom: 0.1rem;'>
+            <h2 style='color: #4A90E2; margin-bottom: 0.1rem;'>MindGuard AI</h2>
+            <p style='font-size: 15px; margin-top: 0.1rem;'>
+                A Safe & Supportive Emotional Wellness Companion for Teenagers 💬
+            </p>
+        </div>
         """,
         unsafe_allow_html=True
     )
@@ -60,57 +229,98 @@ def main():
     with col1:
         st.subheader("💬 Chat with MindGuard AI")
 
-        if "history" not in st.session_state:
-            st.session_state.history = []  # list of (role, message)
+        # Quick feelings – compact
+        st.markdown(
+            "<p style='font-weight: 300; margin-bottom: 0.2rem;'>Quick feelings:</p>",
+            unsafe_allow_html=True
+        )
+        bcol1, bcol2, bcol3, bcol4 = st.columns(4)
+        quick_msg = None
+        if bcol1.button("😊 Happy"):
+            quick_msg = "I am feeling happy today."
+        if bcol2.button("😔 Sad"):
+            quick_msg = "I am feeling sad."
+        if bcol3.button("😡 Angry"):
+            quick_msg = "I am feeling angry."
+        if bcol4.button("😰 Stressed"):
+            quick_msg = "I am feeling stressed about my life and studies."
 
-        user_input = st.text_input("How are you feeling today?")
+        #st.markdown("---")
 
-        if st.button("Send") and user_input.strip():
-            # 1. Detect emotion
-            emotion = detect_emotion(user_input)
+        # Text input
+        user_input = st.text_input(
+            "Type your feelings or thoughts here:",
+            key="input",
+            on_change=on_text_enter,
+        )
 
-            # Map emotion to mood bucket for logging
-            if emotion in ("positive", "neutral", "negative"):
-                mood_bucket = emotion
-            else:  # 'very_negative' also logged as 'negative'
-                mood_bucket = "negative"
+        # Checkbox (left) + Send button (right)
+        chk_col, btn_col = st.columns([3, 1])
+        chk_col.checkbox(
+            "Press Enter to send message",
+            key="enter_to_send",
+            value=st.session_state.enter_to_send,
+        )
+        send_clicked = btn_col.button("Send")
 
-            log_mood(mood_bucket)
+        # Handle quick button message
+        if quick_msg:
+            handle_message(quick_msg)
 
-            # 2. Check if this is distress / crisis level
-            if is_distress(user_input, emotion):
-                ai_reply = (
-                    "I am really sorry that you are feeling this much pain. "
-                    "Please talk to a parent, teacher, or counsellor right now. "
-                    "You do not have to face this alone — someone you trust can "
-                    "support you immediately."
-                )
-            else:
-                # 3. Normal case: generate AI reply (Groq + fallback)
-                ai_reply = generate_ai_reply(user_input, emotion, st.session_state.history)
-
-            # 4. Store conversation
-            st.session_state.history.append(("You", user_input))
-            st.session_state.history.append(("MindGuard AI", ai_reply))
+        # Handle Send button click
+        if send_clicked:
+            text = user_input.strip()
+            if text:
+                handle_message(text)
+                st.session_state.last_sent = text
+                st.session_state.clear_input = True
+                st.rerun()
 
         st.markdown("---")
 
-        # Render chat history as chat bubbles
-        for role, message in st.session_state.history:
-            if role == "You":
+        # Render chat history as chat bubbles (latest pair first)
+        history = st.session_state.history
+        n = len(history)
+
+        for i in range(n - 2, -1, -2):
+            role_user, msg_user = history[i]
+            role_ai, msg_ai = (history[i + 1] if i + 1 < n else (None, None))
+
+            # User bubble
+            if role_user == "You":
                 st.markdown(
                     f"""
-                    <div style='background-color:#DCF8C6; padding:10px; border-radius:10px; margin-bottom:8px;'>
-                        <strong>🧑 You:</strong> {message}
+                    <div class="chat-bubble-user">
+                        <strong>🧑 You:</strong> {msg_user}
                     </div>
                     """,
                     unsafe_allow_html=True
                 )
-            else:
+            elif role_user and msg_user:
                 st.markdown(
                     f"""
-                    <div style='background-color:#E8F1FF; padding:10px; border-radius:10px; margin-bottom:8px;'>
-                        <strong>🤖 MindGuard AI:</strong> {message}
+                    <div class="chat-bubble-user">
+                        <strong>{role_user}:</strong> {msg_user}
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+            # AI bubble
+            if role_ai == "MindGuard AI":
+                st.markdown(
+                    f"""
+                    <div class="chat-bubble-ai">
+                        <strong>🤖 MindGuard AI:</strong> {msg_ai}
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+            elif role_ai and msg_ai:
+                st.markdown(
+                    f"""
+                    <div class="chat-bubble-ai">
+                        <strong>{role_ai}:</strong> {msg_ai}
                     </div>
                     """,
                     unsafe_allow_html=True
@@ -118,11 +328,23 @@ def main():
 
     # -------- RIGHT COLUMN: MOOD + RESPONSIBLE AI --------
     with col2:
-        st.subheader("📊 Mood Summary (Basic View)")
+        st.subheader("📊 Mood Overview")
 
         mood_data = load_mood_data()
-        if mood_data:
-            st.json(mood_data)
+        df = build_mood_df(mood_data) if mood_data else None
+
+        if df is not None and not df.empty:
+            latest_date = df.index[-1]
+            latest_counts = df.loc[latest_date]
+
+            st.markdown(f"**Latest recorded day:** {latest_date}")
+            mcol1, mcol2, mcol3 = st.columns(3)
+            mcol1.metric("😊 Positive", int(latest_counts.get("positive", 0)))
+            mcol2.metric("😐 Neutral", int(latest_counts.get("neutral", 0)))
+            mcol3.metric("☹️ Negative", int(latest_counts.get("negative", 0)))
+
+            st.markdown("#### Mood Trend (by day)")
+            st.bar_chart(df[["positive", "neutral", "negative"]])
         else:
             st.write("No mood data recorded yet. Start chatting to build your mood history!")
 
@@ -133,10 +355,10 @@ def main():
             """
             <div style='background-color:#FFF7E6; padding:15px; border-radius:10px;'>
             • No medical advice or diagnosis.<br>
-            • Age-appropriate, safe and kind language.<br>
-            • Encourages students to talk to trusted adults.<br>
-            • Detects distress and shows a crisis safety message.<br>
-            • Only mood counts are stored, no identity data.<br>
+            • Age-appropriate, kind and simple language.<br>
+            • Encourages students to talk to trusted adults for serious issues.<br>
+            • Detects crisis-level distress and shows a safety message.<br>
+            • Only mood counts per day are stored (no names or personal identity).<br>
             </div>
             """,
             unsafe_allow_html=True
@@ -145,4 +367,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    

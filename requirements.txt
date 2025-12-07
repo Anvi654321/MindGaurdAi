@@ -1,6 +1,6 @@
-streamlit
-textblob
-openai
+streamlit==1.40.0
 pandas
-matplotlib
+textblob
+nltk
+groq
 python-dotenv

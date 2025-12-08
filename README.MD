@@ -15,6 +15,14 @@ The system is carefully built following **CBSE Responsible AI Principles** and a
 👉 **Live Demo:** https://mindgaurdai.streamlit.app/  
 👉 **Tech Stack:** Streamlit, TextBlob, Groq (LLaMA 3), JSON Storage
 
+## 🏆 About the Creator
+
+**Anvita Shashi**  
+Class IX-B  
+The Newtown School, Kolkata
+
+Project submitted under **CBSE YUVAi – Young Innovators Program**  
+Category: *Education / Student Wellbeing*
 ---
 
 ## 🎯 Key Features
@@ -90,27 +98,6 @@ JSON Mood Logger
 | Styling | Custom CSS |
 | Deployment | Streamlit Cloud |
 
----
-
-## 📁 Folder Structure
-
-MindGaurdAi/
-│
-├── app/
-│   ├── main.py
-│   ├── services/
-│   │   ├── chat.py
-│   │   ├── sentiment.py
-│   │   ├── safety.py
-│   │   └── mood_store.py
-│
-├── assets/
-│   └── logo.png
-│
-├── requirements.txt
-└── README.md
-
-
 
 ---
 
@@ -130,17 +117,6 @@ MindGuard AI follows CBSE Responsible AI Principles:
 - Encourages talking to trusted adults  
 - Detects distress safely  
 - Does not store personal data  
-
----
-
-## 🏆 About the Creator
-
-**Anvita Shashi**  
-Class IX-B  
-The Newtown School, Kolkata
-
-Project submitted under **CBSE YUVAi – Young Innovators Program**  
-Category: *Education / Student Wellbeing*
 
 ---
 

@@ -63,11 +63,6 @@ Thumbs.db
 ehthumbs.db
 desktop.ini
 
-# --- Images generated or screenshots (optional) ---
-*.png
-*.jpg
-*.jpeg
-
 # --- Ignore local config ---
 config.json
 secrets.json

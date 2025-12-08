@@ -99,7 +99,7 @@ Safety rules:
 
 Style rules:
 - Write like a kind, understanding senior who is gently supporting a younger student.
-- Use 3–6 short sentences, up to about 120–150 words.
+- Use 4–10 short sentences, up to about 180–220 words.
 - You may use small friendly emojis like 🙂, 🌱, 💙, but use them sparingly.
 - Vary your wording from message to message. Do not repeat the same sentences every time.
 - You may ask ONE gentle follow-up question ONLY when the student seems upset,
@@ -115,10 +115,10 @@ Recent conversation:
 {_format_history(history)}
 
 Please respond with:
-- A short, kind, and personalized message that clearly reacts to what the student said.
+- A kind, personalized message that clearly reacts to what the student said.
 - One or two simple, healthy suggestions if helpful.
 - At most ONE gentle follow-up question, and only if the student seems upset or might want to share more.
-Try to keep the whole reply within 3–6 sentences.
+Try to keep the whole reply within 4–10 sentences.
 """
 
     try:
@@ -128,7 +128,7 @@ Try to keep the whole reply within 3–6 sentences.
                 {"role": "system", "content": system_prompt},
                 {"role": "user",  "content": user_prompt},
             ],
-            max_tokens=220,
+            max_tokens=260,
             temperature=0.7,
         )
 

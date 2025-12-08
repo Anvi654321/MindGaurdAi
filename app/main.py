@@ -17,7 +17,7 @@ from app.services.chat import generate_ai_reply
 
 # ----------------- SCHOOL SETTINGS -----------------
 SCHOOL_NAME = "The Newtown School, Kolkata"
-LOGO_PATH = "assets/logo.png"   # make sure this file exists
+LOGO_PATH = "assets/logo.png"   # make sure this exists
 
 # ----------------- PAGE CONFIG -----------------
 if os.path.exists(LOGO_PATH):
@@ -33,24 +33,28 @@ else:
         layout="wide"
     )
 
-# ----------------- GLOBAL STYLES -----------------
+# ----------------- GLOBAL STYLES (light theme + readable chat) -----------------
 st.markdown(
     """
     <style>
-    body {
-        background-color: #F5F7FB;
+    /* Force light background + dark text even if browser is in dark mode */
+    html, body, [data-testid="stAppViewContainer"] {
+        background-color: #F5F7FB !important;
+        color: #000000 !important;
     }
-    /* Main container spacing */
+
     .block-container {
-        padding-top: 1.4rem;
+        padding-top: 2.5rem;   /* Enough so header is never cut */
         padding-bottom: 1rem;
     }
+
     .chat-bubble-user {
         background-color: #DCF8C6;
         padding: 10px;
         border-radius: 10px;
         margin-bottom: 8px;
         border: 1px solid #C5E1A5;
+        color: #000000 !important;
     }
     .chat-bubble-ai {
         background-color: #E8F1FF;
@@ -58,16 +62,21 @@ st.markdown(
         border-radius: 10px;
         margin-bottom: 8px;
         border: 1px solid #BBDEFB;
+        color: #000000 !important;
     }
+
     /* Make buttons (including Quick feelings) a bit more compact */
     .stButton>button {
         padding: 0.2rem 0.6rem;
         font-size: 0.8rem;
     }
-    /* Hide Streamlit's top header + deploy toolbar */
-    header[data-testid="stHeader"] {
-        display: none !important;
+
+    /* Prevent mobile zoom on input, better typing experience */
+    input, textarea {
+        font-size: 16px !important;
     }
+
+    /* Hide Streamlit's deploy toolbar */
     div[data-testid="stToolbar"] {
         display: none !important;
     }
@@ -126,45 +135,11 @@ def handle_message(message: str):
     st.session_state.history.append(("MindGuard AI", ai_reply))
 
 
-def on_text_enter():
-    """Called when text input changes (Enter pressed)."""
-    text = st.session_state.get("input", "").strip()
-    if not text:
-        return
-
-    # Only send on Enter if the checkbox is enabled
-    if not st.session_state.get("enter_to_send", True):
-        return
-
-    # Directly handle message every time Enter is pressed
-    handle_message(text)
-    st.session_state.last_sent = text
-    st.session_state.clear_input = True
-    st.rerun()
-
-
 # ----------------- MAIN APP -----------------
 def main():
     # -------- INITIAL SESSION STATE --------
     if "history" not in st.session_state:
         st.session_state.history = []  # list of (role, message)
-
-    if "input" not in st.session_state:
-        st.session_state.input = ""
-
-    if "clear_input" not in st.session_state:
-        st.session_state.clear_input = False
-
-    if "last_sent" not in st.session_state:
-        st.session_state.last_sent = ""
-
-    if "enter_to_send" not in st.session_state:
-        st.session_state.enter_to_send = True
-
-    # Clear input BEFORE creating widget
-    if st.session_state.clear_input:
-        st.session_state.input = ""
-        st.session_state.clear_input = False
 
     # -------- SIDEBAR --------
     with st.sidebar:
@@ -177,7 +152,7 @@ def main():
         # Compact student/school/class block
         st.markdown(
             f"""
-            <div style='line-height: 1.2; font-size: 14px; margin-top: 0.1rem;'>
+            <div style='line-height: 1.2; font-size: 14px; margin-top: 0.2rem;'>
                 <b>Student:</b> Anvita Shashi<br>
                 <b>School:</b> {SCHOOL_NAME}<br>
                 <b>Class:</b> IX (B)
@@ -186,22 +161,22 @@ def main():
             unsafe_allow_html=True
         )
 
-        #st.markdown("---")
+        st.markdown("---")
 
         st.markdown("### 🛠️ Technologies Used")
         st.markdown(
             "- Python 3.14\n"
             "- Streamlit\n"
             "- TextBlob (Sentiment)\n"
-            "- Groq + LLaMA 3 (LLM)\n"
-            "- JSON for Mood Logs"
+            "- Groq (LLaMA 3)\n"
+            "- JSON Mood Storage"
         )
-        #st.markdown("---")
+        st.markdown("---")
         st.info(
             "Disclaimer: This tool does not provide medical advice or diagnosis. "
             "For serious concerns, students must talk to a parent, teacher, or counsellor."
         )
-        #st.markdown("---")
+        st.markdown("---")
         st.markdown("### ℹ️ About MindGuard AI")
         st.markdown(
             "MindGuard AI is a school project that uses sentiment analysis and a safe "
@@ -212,7 +187,7 @@ def main():
     # -------- HEADER --------
     st.markdown(
         """
-        <div style='text-align: center; margin-bottom: 0.1rem;'>
+        <div style='text-align: center; margin-bottom: 0.5rem;'>
             <h2 style='color: #4A90E2; margin-bottom: 0.1rem;'>MindGuard AI</h2>
             <p style='font-size: 15px; margin-top: 0.1rem;'>
                 A Safe & Supportive Emotional Wellness Companion for Teenagers 💬
@@ -231,7 +206,7 @@ def main():
 
         # Quick feelings – compact
         st.markdown(
-            "<p style='font-weight: 300; margin-bottom: 0.2rem;'>Quick feelings:</p>",
+            "<p style='font-weight: 600; margin-bottom: 0.2rem;'>Quick feelings:</p>",
             unsafe_allow_html=True
         )
         bcol1, bcol2, bcol3, bcol4 = st.columns(4)
@@ -245,36 +220,29 @@ def main():
         if bcol4.button("😰 Stressed"):
             quick_msg = "I am feeling stressed about my life and studies."
 
-        #st.markdown("---")
-
-        # Text input
-        user_input = st.text_input(
-            "Type your feelings or thoughts here:",
-            key="input",
-            on_change=on_text_enter,
-        )
-
-        # Checkbox (left) + Send button (right)
-        chk_col, btn_col = st.columns([3, 1])
-        chk_col.checkbox(
-            "Press Enter to send message",
-            key="enter_to_send",
-            value=st.session_state.enter_to_send,
-        )
-        send_clicked = btn_col.button("Send")
-
         # Handle quick button message
         if quick_msg:
             handle_message(quick_msg)
 
-        # Handle Send button click
-        if send_clicked:
-            text = user_input.strip()
-            if text:
-                handle_message(text)
-                st.session_state.last_sent = text
-                st.session_state.clear_input = True
-                st.rerun()
+        st.markdown("---")
+
+        # Chat form (stable for mobile & desktop)
+        with st.form("chat_form", clear_on_submit=True):
+            st.markdown(
+                "<p style='font-weight: 600; margin-bottom: 0.1rem;'>Type your feelings or thoughts here:</p>",
+                unsafe_allow_html=True
+            )
+            user_input = st.text_input(
+                "",
+                key="input",
+                placeholder="Write how you feel..."
+            )
+
+            _, btn_col = st.columns([3, 1])
+            send_clicked = btn_col.form_submit_button("Send")
+
+        if send_clicked and user_input.strip():
+            handle_message(user_input.strip())
 
         st.markdown("---")
 
